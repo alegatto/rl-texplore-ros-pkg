@@ -2,8 +2,7 @@ This version of the rl-texplore package adds two new environments:
 - The RobovieWalkerEnv environment that performs the walking action on the small humanoid Robovie X. 
   This environment is compatibile with the standard agents like TEXPLORE. 
 - The PolicyGradientEnv environment performs the Robovie X's walking action 
-  but using the N dimensional Policy Gradient algorithm, based on the paper "Policy Gradient Reinforcement Learning for Fast
-  Quadrupedal Locomotion, Nate Kohl and Peter Stone".
+  but using the N dimensional Policy Gradient algorithm, based on the paper "Policy Gradient Reinforcement Learning for Fast Quadrupedal Locomotion, Nate Kohl and Peter Stone".
   
   Below you can see the original package's Readme file:
   
