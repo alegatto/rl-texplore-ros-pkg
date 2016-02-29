@@ -23,6 +23,8 @@
 #include <rl_env/MountainCar.hh>
 #include <rl_env/CartPole.hh>
 #include <rl_env/LightWorld.hh>
+#include <rl_env/RobovieWalkerEnv.hh>
+#include <rl_env/PolicyGradientEnv.hh>
 
 #include <getopt.h>
 #include <stdlib.h>
@@ -46,23 +48,38 @@ int nsectors = 3;
 int delay = 0;
 bool lag = false;
 bool highvar = false;
+bool isReale = false;
+int numeroPerturbazioni = 0;
+int numeroTestIniziali = 0;
+float rewardObiettivo = 0.0;
 
 void displayHelp(){
-  cout << "\n Call env --env type [options]\n";
-  cout << "Env types: taxi tworooms fourrooms energy fuelworld mcar cartpole car2to7 car7to2 carrandom stocks lightworld\n";
-  cout << "\n Options:\n";
-  cout << "--seed value (integer seed for random number generator)\n";
-  cout << "--deterministic (deterministic version of domain)\n";
-  cout << "--stochastic (stochastic version of domain)\n";
-  cout << "--delay value (# steps of action delay (for mcar and tworooms)\n";
-  cout << "--lag (turn on brake lag for car driving domain)\n";
-  cout << "--highvar (have variation fuel costs in Fuel World)\n";
-  cout << "--nsectors value (# sectors for stocks domain)\n";
-  cout << "--nstocks value (# stocks for stocks domain)\n";
-  cout << "--prints (turn on debug printing of actions/rewards)\n";
 
-  cout << "\n For more info, see: http://www.ros.org/wiki/rl_env\n";
-  exit(-1);
+	  cout << "\n IASLAB(unipd) - Reinforcement learning on Humanoids for ROS\n";
+	  cout << "\n Call env --env type [options]\n";
+	  cout << "Env type (IASLAB): RobovieX\n";
+	  cout << "\n Options:\n";
+	  cout << "--tipoSimulazione (performs actions on REAL robot)\n";
+	  cout << "Env type (IASLAB): NPolicyGradient\n";
+	  cout << "\n Options:\n";
+	  cout << "--tipoSimulazione (performs actions on REAL robot)\n";
+	  cout << "--numeroPerturbazioni (sets the number of perturbations applied to the policy at each iteration)\n";
+	  cout << "--numeroTestIniziali (sets the number of initial tests in the policy generation)\n";
+	  cout << "--rewardObiettivo (sets the reward's scope value of the optimal policy)\n";
+	  cout << "other Env types (no humanoid): taxi tworooms fourrooms energy fuelworld mcar cartpole car2to7 car7to2 carrandom stocks lightworld\n";
+	  cout << "\n Options:\n";
+	  cout << "--seed value (integer seed for random number generator)\n";
+	  cout << "--deterministic (deterministic version of domain)\n";
+	  cout << "--stochastic (stochastic version of domain)\n";
+	  cout << "--delay value (# steps of action delay (for mcar and tworooms)\n";
+	  cout << "--lag (turn on brake lag for car driving domain)\n";
+	  cout << "--highvar (have variation fuel costs in Fuel World)\n";
+	  cout << "--nsectors value (# sectors for stocks domain)\n";
+	  cout << "--nstocks value (# stocks for stocks domain)\n";
+	  cout << "--prints (turn on debug printing of actions/rewards)\n";
+
+	  cout << "\n For more info, see: http://www.ros.org/wiki/rl_env\n";
+      exit(-1);
 }
 
 
@@ -77,7 +94,8 @@ void processAction(const rl_msgs::RLAction::ConstPtr &actionIn){
   sr.terminal = e->terminal();
 
   // publish the state-reward message
-  if (PRINTS) cout << "Got action " << actionIn->action << " at state: " << sr.state[0] << ", " << sr.state[1] << ", reward: " << sr.reward << endl;
+  //if (PRINTS) 
+  cout << "Got action " << actionIn->action << " at state: " << sr.state[0] << ", " << sr.state[1] << ", reward: " << sr.reward << endl;
 
   out_env_sr.publish(sr);
 
@@ -106,7 +124,7 @@ void initEnvironment(){
   e = NULL;
   rl_msgs::RLEnvDescription desc;
   
-
+/*
   if (strcmp(envType, "cartpole") == 0){
     desc.title = "Environment: Cart Pole\n";
     e = new CartPole(rng, stochastic);
@@ -180,51 +198,81 @@ void initEnvironment(){
     displayHelp();
     exit(-1);
   }
+*/
 
-  // fill in some more description info
-  desc.num_actions = e->getNumActions();
-  desc.episodic = e->isEpisodic();
-
-  std::vector<float> maxFeats;
-  std::vector<float> minFeats;
-
-  e->getMinMaxFeatures(&minFeats, &maxFeats);
-  desc.num_states = minFeats.size();
-  desc.min_state_range = minFeats;
-  desc.max_state_range = maxFeats;
-
-  desc.stochastic = stochastic;
-  float minReward;
-  float maxReward;
-  e->getMinMaxReward(&minReward, &maxReward);
-  desc.max_reward = maxReward;
-  desc.reward_range = maxReward - minReward;
-
-  cout << desc.title << endl;
-
-  // publish environment description
-  out_env_desc.publish(desc);
-
-  sleep(1);
-
-  // send experiences
-  std::vector<experience> seeds = e->getSeedings();
-  for (unsigned i = 0; i < seeds.size(); i++){
-    rl_msgs::RLEnvSeedExperience seed;
-    seed.from_state = seeds[i].s;
-    seed.to_state   = seeds[i].next;
-    seed.action     = seeds[i].act;
-    seed.reward     = seeds[i].reward;
-    seed.terminal   = seeds[i].terminal;
-    out_seed.publish(seed);
+ //Creazione dell'ambiente
+  if (strcmp(envType, "RobovieX") == 0){
+      desc.title = "Robot: RobovieX\n";
+      cout << "\n ANTES isReale=" << isReale << "\n";
+      e = new RobovieWalkerEnv(rng,isReale);
+      //e = new Stocks(rng, stochastic, nsectors, nstocks);
+    }
+	else if (strcmp(envType, "NPolicyGradient") == 0){
+	//nuova implementazione policy gradient
+    desc.title = "Environment: NPolicyGradient\n";
+    e = new PolicyGradientEnv(rng, isReale, numeroPerturbazioni, numeroTestIniziali, rewardObiettivo);
   }
+    else {
+      std::cerr << "Tipo robot/ambiente non implementato" << endl;
+      displayHelp();
+      exit(-1);
+    }
+   
+  //cout << "\n EMPIEZA \n"; 
+  
+   // fill in some more description info
+	  desc.num_actions = e->getNumActions();
+	  desc.episodic = e->isEpisodic();
 
-  // now send first state message
-  rl_msgs::RLStateReward sr;
-  sr.terminal = false;
-  sr.reward = 0;
-  sr.state = e->sensation();
-  out_env_sr.publish(sr);
+	  std::vector<float> maxFeats;
+	  std::vector<float> minFeats;
+
+	  e->getMinMaxFeatures(&minFeats, &maxFeats);
+	  desc.num_states = minFeats.size();
+	  desc.min_state_range = minFeats;
+	  desc.max_state_range = maxFeats;
+
+	  desc.stochastic = stochastic;
+	  float minReward;
+	  float maxReward;
+	  e->getMinMaxReward(&minReward, &maxReward);
+	  desc.max_reward = maxReward;
+	  desc.reward_range = maxReward - minReward;
+
+	  cout << desc.title << endl;
+
+	  // publish environment description
+	  out_env_desc.publish(desc);
+
+	  sleep(1);
+
+  
+  if (strcmp(envType, "NPolicyGradient") == 0){
+	  
+	  //Nel caso del policy gradient esegue direttamente l'algoritmo
+	  std::vector<experience> seeds = e->getSeedings();
+  }
+  else
+  {
+	  // send experiences
+	  std::vector<experience> seeds = e->getSeedings();
+	  for (unsigned i = 0; i < seeds.size(); i++){
+		rl_msgs::RLEnvSeedExperience seed;
+		seed.from_state = seeds[i].s;
+		seed.to_state   = seeds[i].next;
+		seed.action     = seeds[i].act;
+		seed.reward     = seeds[i].reward;
+		seed.terminal   = seeds[i].terminal;
+		out_seed.publish(seed);
+	  }
+
+	  // now send first state message
+	  rl_msgs::RLStateReward sr;
+	  sr.terminal = false;
+	  sr.reward = 0;
+	  sr.state = e->sensation();
+	  out_env_sr.publish(sr);
+}
   
 }
 
@@ -279,7 +327,11 @@ int main(int argc, char *argv[])
     {"nolag", 0, 0, 'o'},
     {"seed", 1, 0, 'x'},
     {"prints", 0, 0, 'p'},
-    {"highvar", 0, 0, 'v'}
+    {"highvar", 0, 0, 'v'},
+    {"tipoSimulazione", 0, 0, 'r'},
+    {"numeroPerturbazioni", 1, 0, 'n'},
+    {"numeroTestIniziali", 1, 0, 'm'},
+    {"rewardObiettivo", 1, 0, 'k'}
   };
 
   while(-1 != (ch = getopt_long_only(argc, argv, optflags, long_options, &option_index))) {
@@ -380,6 +432,41 @@ int main(int argc, char *argv[])
     case 'p':
       PRINTS = true;
       break;
+    
+    case 'r':
+      {
+        if (strcmp(envType, "RobovieX") == 0 || strcmp(envType, "NPolicyGradient") == 0){
+          isReale = true;
+          cout << "tipoSimulazione: " << isReale << endl;
+        } else {
+          isReale = false;
+        }
+        break;
+      }
+    case 'm':
+      {
+        if (strcmp(envType, "NPolicyGradient") == 0){
+          numeroPerturbazioni = std::atoi(optarg);
+          cout << "numeroPerturbazioni: " << numeroPerturbazioni << endl;
+	  }
+        break;
+      }
+    case 'n':
+      {
+        if (strcmp(envType, "NPolicyGradient") == 0){
+          numeroTestIniziali = std::atoi(optarg);
+          cout << "numeroTestIniziali: " << numeroTestIniziali << endl;
+	  }
+        break;
+      }
+    case 'k':
+      {
+        if (strcmp(envType, "NPolicyGradient") == 0){
+          rewardObiettivo = std::atof(optarg);
+          cout << "rewardObiettivo: " << rewardObiettivo << endl;
+	  }
+        break;
+      }
 
     case 'h':
     case '?':
@@ -410,7 +497,18 @@ int main(int argc, char *argv[])
   // publish env description, first state
   // Setup RL World
   rng = Random(1+seed);
+  
+  if (strcmp(envType, "NPolicyGradient") == 0){
+	  
+	  ROS_INFO(NODE ": starting policyGradient loop");
+  }
+
   initEnvironment();
+  
+  if (strcmp(envType, "NPolicyGradient") == 0){
+	  
+	  ROS_INFO(NODE ": finishing policyGradient loop");
+  }
 
 
   ROS_INFO(NODE ": starting main loop");
